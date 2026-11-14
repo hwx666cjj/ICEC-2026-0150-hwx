@@ -33,8 +33,9 @@ python3 analyze_phone_power.py            # 读 raw_data/phone_power.csv
 
 ## 交付清单（提交前核对）
 - [ ] `raw_data/phone_power.csv` —— 24 组真实数据
-- [ ] `selfie_verify.jpg` —— 本人同框认证照
-- [ ] `report.html` —— 可视化分析报告
+- [ ] `selfie_verify.jpg` —— 本人同框认证照（大纲硬性）
+- [ ] `evidence/` —— 实景佐证照片（实测桌面抓拍，与自拍互补，证明真实测量）
+- [ ] `report.html` —— 可视化分析报告（含第 7 节「实验佐证照片」）
 - [ ] `power_saving_report.md` —— 高功耗模块分析 + 系统省电策略（基于报告数据撰写）
 - [ ] `analyze_phone_power.py` —— 可复现分析脚本
 

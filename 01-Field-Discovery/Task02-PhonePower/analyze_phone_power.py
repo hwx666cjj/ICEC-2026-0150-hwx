@@ -20,6 +20,8 @@ RAW = os.path.join(BASE, "raw_data")
 DEFAULT_CSV = os.path.join(RAW, "phone_power.csv")
 TEMPLATE_CSV = os.path.join(RAW, "phone_power_template.csv")
 OUT = os.path.join(BASE, "report.html")
+EVIDENCE_DIR = os.path.join(BASE, "evidence")
+IMG_EXTS = (".jpg", ".jpeg", ".png", ".webp")
 
 # 工况顺序与配色（与大纲一致：待机/短视频/导航拍摄/高帧率游戏）
 COND_ORDER = ["standby", "video", "navcam", "game"]
@@ -201,6 +203,39 @@ def make_table(rows):
     </table>'''
 
 
+def evidence_section():
+    """扫描 evidence/ 目录下的实景照片，生成「实验佐证」图廊。
+    这些照片证明数据由本人真实测量（坐桌前实测，非伪造），与大纲要求的
+    「同框认证照 selfie_verify.jpg」互补：本图廊侧重『实测场景』，自拍侧重『本人出镜认证』。"""
+    if not os.path.isdir(EVIDENCE_DIR):
+        return ""
+    files = sorted(
+        f for f in os.listdir(EVIDENCE_DIR)
+        if f.lower().endswith(IMG_EXTS) and not f.lower().startswith("selfie")
+    )
+    if not files:
+        return ""
+    cards = []
+    for f in files:
+        # 用相对路径引用，保证 report.html 离线/在线均可加载
+        rel = "evidence/" + f
+        cards.append(
+            f'<div style="display:inline-block;width:46%;margin:6px 1%;vertical-align:top">'
+            f'<img src="{html.escape(rel)}" alt="{html.escape(f)}" '
+            f'style="width:100%;border:1px solid #e3e8ea;border-radius:6px">'
+            f'<p class="note" style="margin:4px 0 0">{html.escape(f)}</p></div>'
+        )
+    return (
+        '<h2>7. 实验佐证照片（实景实测）</h2>\n'
+        '  <div class="card">\n'
+        '    <p>以下为本人坐桌前实测时的实景抓拍，佐证 24 组数据为真实测量所得（非伪造）：'
+        '桌面支架上的手机 + 计时器、笔记本电脑记录表格等。与大纲硬性要求的'
+        '「同框认证照 selfie_verify.jpg」（本人出镜）互补，二者共同构成溯源材料。</p>\n'
+        "    " + "".join(cards) + "\n"
+        '  </div>'
+    )
+
+
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else None
     if src and os.path.exists(src):
@@ -316,6 +351,8 @@ def main():
 
   <h2>6. 原始数据表（24 组）</h2>
   {make_table(rows)}
+
+  {evidence_section()}
 
   <p class="note">报告由 analyze_phone_power.py 生成 · 纯标准库内联 SVG，可离线打开。数据来源：{html.escape(os.path.basename(path))}（用户真实测量）。</p>
 </body></html>'''

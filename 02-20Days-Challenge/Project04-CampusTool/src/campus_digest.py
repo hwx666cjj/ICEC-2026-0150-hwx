@@ -30,8 +30,11 @@ DIGEST = os.path.join(BASE, "digest")
 PROCESS_LOGS = os.path.join(BASE, "process_logs")
 
 # —— 规则库（可随你遇到的真实通知逐步扩充）——
-DATE_RE = re.compile(r"(\d{1,2})\s*[月./\-]\s*(\d{1,2})\s*[日号]?")
-TIME_RE = re.compile(r"(\d{1,2})\s*[:：]\s*(\d{2})")
+# 日期：中文「X月X日」或数字「X/X」；前置断言排除班级编号（如 c3-2、2/3 误判）
+DATE_RE = re.compile(
+    r"(?<![-A-Za-z0-9])(\d{1,2})\s*(?:月\s*(\d{1,2})\s*[日号]?|[/]\s*(\d{1,2}))"
+)
+TIME_RE = re.compile(r"(?<![-A-Za-z0-9])(\d{1,2})\s*[:：]\s*(\d{2})")
 KW = {
     "截止/提交": ["截止", "ddl", "due", "提交", "上交", "交作业", "过期", "之前", "前请"],
     "事件": ["会议", "班会", "讲座", "考试", "测验", "答辩", "路演", "实训", "集合", "活动", "报名"],
@@ -40,15 +43,27 @@ KW = {
 }
 
 
+def _extract_dates(line):
+    """提取一行里所有日期，返回 ['11月20日', ...]。已规避班级编号误判。"""
+    out = []
+    for dm in DATE_RE.finditer(line):
+        m = int(dm.group(1))
+        d = dm.group(2) if dm.group(2) is not None else dm.group(3)
+        if d is not None:
+            out.append(f"{m}月{int(d)}日")
+    return out
+
+
+def _extract_times(line):
+    """提取一行里所有时间，返回 ['21:00', ...]。"""
+    return [f"{int(tm.group(1))}:{tm.group(2)}" for tm in TIME_RE.finditer(line)]
+
+
 def _make_item(line):
-    """对单行文本提取结构化字段。"""
-    item = {"raw": line[:140], "date": None, "time": None, "tags": []}
-    dm = DATE_RE.search(line)
-    if dm:
-        item["date"] = f"{int(dm.group(1))}月{int(dm.group(2))}日"
-    tm = TIME_RE.search(line)
-    if tm:
-        item["time"] = f"{int(tm.group(1))}:{tm.group(2)}"
+    """对单行文本提取结构化字段（日期/时间均支持多个）。"""
+    item = {"raw": line[:140], "dates": [], "times": [], "tags": []}
+    item["dates"] = _extract_dates(line)
+    item["times"] = _extract_times(line)
     for tag, kws in KW.items():
         if any(k in line for k in kws):
             item["tags"].append(tag)
@@ -67,7 +82,7 @@ def extract(text):
         for line in lines:
             it = _make_item(line)
             # 只有命中有意义的字段才收录，避免噪声
-            if it["date"] or it["time"] or it["tags"]:
+            if it["dates"] or it["times"] or it["tags"]:
                 items.append(it)
     return items
 
@@ -97,10 +112,10 @@ def write_digest(today, all_items):
             tags = ",".join(it["tags"]) or "其他"
             line = f"- 【{tags}】 {it['raw']}"
             extra = []
-            if it["date"]:
-                extra.append(f"日期 {it['date']}")
-            if it["time"]:
-                extra.append(f"时间 {it['time']}")
+            if it["dates"]:
+                extra.append("日期 " + " / ".join(it["dates"]))
+            if it["times"]:
+                extra.append("时间 " + " / ".join(it["times"]))
             if extra:
                 line += "（" + "；".join(extra) + "）"
             out.write(line + "\n")

@@ -15,11 +15,12 @@
    - **高帧率游戏**：开一局吃性能的手游（如原神/王者高帧率）。
 3. **读数**：
    - **电量%**：设置 → 电池 里看百分比（每次记下来）。
-   - **温度℃**：用免费 App 读（如 `CPU-Z` / `DevCheck` / `Device Info HW` 的电池/温度项），或红外测温枪点手机背面。没有就先空着，脚本会自动跳过温度图。
+   - **电池温度℃（必填，主指标）**：用免费 App 读——`CPU-Z` / `DevCheck` / `Device Info HW` 里的「电池 / Battery 温度」项，或红外测温枪点手机背面。几乎所有手机都能稳定读到，**优先记这一列**。
+   - **CPU 温度℃（选填）**：若你的 App（如 `DevCheck` 的 Thermal/Sensors 项）能稳定读到 CPU/SoC 温度，再补这一列，报告会多出一张 CPU 温升图、结论更硬（能点明"芯片是主要热源"）。读不到就留空，不影响主体分析。
 4. **同框照片**（大纲硬性要求）：测的时候自拍一张「你 + 举着正在测的手机」的照，存到本目录（命名如 `selfie_verify.jpg`），作为本人实地认证。
 
 ## 填数据
-- 打开 `raw_data/phone_power_template.csv`，把 24 行的 `battery_pct` / `temp_c` 填上（不要用示例文件冒充真实数据）。
+- 打开 `raw_data/phone_power_template.csv`，把 24 行的 `battery_pct` / `battery_temp_c`（必填）和 `cpu_temp_c`（选填）填上（不要用示例文件冒充真实数据）。
 - 填好后**另存为** `raw_data/phone_power.csv`（脚本默认读这个文件名）。
 
 ## 生成报告

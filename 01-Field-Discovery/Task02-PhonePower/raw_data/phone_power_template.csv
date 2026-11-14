@@ -1,4 +1,4 @@
-﻿condition_zh,condition_en,time_min,battery_pct,temp_c,note
+﻿condition_zh,condition_en,time_min,battery_pct,battery_temp_c,cpu_temp_c,note
 待机,standby,5,,,
 待机,standby,10,,,
 待机,standby,15,,,

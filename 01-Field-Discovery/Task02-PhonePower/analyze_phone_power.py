@@ -3,7 +3,7 @@
 """
 课题02 · 个人手机多工况发热与掉电实测 —— 分析脚本（纯标准库，内联 SVG，无需联网）
 
-读取 raw_data/phone_power_template.csv（用户填好真实电量%/温度后另存为 phone_power.csv），
+读取 raw_data/phone_power_template.csv（用户填好真实电量% / 电池温度 / 选填 CPU 温度后另存为 phone_power.csv），
 自动计算各工况掉电速率、温升，并生成可视化报告 report.html。
 
 用法：
@@ -46,7 +46,7 @@ def load_rows(path):
 
 
 def build_series(rows):
-    """按工况分组，返回 {cond: [(t, batt, temp), ...]} 已按时间排序。"""
+    """按工况分组，返回 {cond: [(t, batt, batt_temp, cpu_temp), ...]} 已按时间排序。"""
     series = {c: [] for c in COND_ORDER}
     for r in rows:
         c = (r.get("condition_en") or "").strip().lower()
@@ -54,10 +54,11 @@ def build_series(rows):
             continue
         t = parse_num(r.get("time_min"))
         b = parse_num(r.get("battery_pct"))
-        tp = parse_num(r.get("temp_c"))
+        bt = parse_num(r.get("battery_temp_c"))
+        ct = parse_num(r.get("cpu_temp_c"))
         if t is None:
             continue
-        series[c].append((t, b, tp))
+        series[c].append((t, b, bt, ct))
     for c in series:
         series[c].sort(key=lambda x: x[0])
     return series
@@ -65,7 +66,7 @@ def build_series(rows):
 
 def drain_rate(points):
     """掉电速率 %/min = (首-末电量)/(末-首时间)。"""
-    batt = [(t, b) for t, b, _ in points if b is not None]
+    batt = [(t, b) for t, b, _, _ in points if b is not None]
     if len(batt) < 2:
         return None
     (t0, b0), (t1, b1) = batt[0], batt[-1]
@@ -74,14 +75,19 @@ def drain_rate(points):
     return (b0 - b1) / (t1 - t0)
 
 
-def temp_rise(points):
-    temps = [(t, tp) for t, _, tp in points if tp is not None]
+def temp_rise(points, field="battery"):
+    """温升 = 末-首 温度。field='battery' 取电池温度，'cpu' 取 CPU 温度。"""
+    temps = []
+    for t, b, bt, ct in points:
+        v = bt if field == "battery" else ct
+        if v is not None:
+            temps.append((t, v))
     if len(temps) < 2:
         return None
     return temps[-1][1] - temps[0][1]
 
 
-def line_chart(series, title, ylabel, ymin, ymax, w=680, h=340, value_fmt="{:.0f}"):
+def line_chart(series, title, ylabel, ymin, ymax, w=680, h=340, value_fmt="{:.0f}", field="batt"):
     padL, padR, padT, padB = 52, 18, 28, 36
     plotW = w - padL - padR
     plotH = h - padT - padB
@@ -113,8 +119,13 @@ def line_chart(series, title, ylabel, ymin, ymax, w=680, h=340, value_fmt="{:.0f
     for c in COND_ORDER:
         pts = series.get(c, [])
         valid = []
-        for (t, b, tp) in pts:
-            v = b if ylabel.startswith("电量") else tp
+        for (t, b, bt, ct) in pts:
+            if field == "batt":
+                v = b
+            elif field == "btemp":
+                v = bt
+            else:
+                v = ct
             if v is not None:
                 valid.append((t, v))
         if len(valid) < 2:
@@ -166,14 +177,16 @@ def make_table(rows):
     body = ""
     for r in rows:
         b = (r.get("battery_pct") or "").strip()
-        tp = (r.get("temp_c") or "").strip()
+        bt = (r.get("battery_temp_c") or "").strip()
+        ct = (r.get("cpu_temp_c") or "").strip()
         body += (f"<tr><td>{html.escape(r.get('condition_zh',''))}</td>"
                  f"<td>{html.escape(str(r.get('time_min','')))}</td>"
                  f"<td>{html.escape(b) if b else '—'}</td>"
-                 f"<td>{html.escape(tp) if tp else '—'}</td>"
+                 f"<td>{html.escape(bt) if bt else '—'}</td>"
+                 f"<td>{html.escape(ct) if ct else '—'}</td>"
                  f"<td>{html.escape(r.get('note','') or '')}</td></tr>")
     return f'''<table>
-      <tr><th>工况</th><th>时间(分)</th><th>电量%</th><th>温度℃</th><th>备注</th></tr>
+      <tr><th>工况</th><th>时间(分)</th><th>电量%</th><th>电池温度℃</th><th>CPU温度℃</th><th>备注</th></tr>
       {body}
     </table>'''
 
@@ -196,23 +209,34 @@ def main():
     series = build_series(rows)
 
     rates = {c: drain_rate(series[c]) for c in COND_ORDER}
-    rises = {c: temp_rise(series[c]) for c in COND_ORDER}
+    rises_b = {c: temp_rise(series[c], "battery") for c in COND_ORDER}
+    rises_c = {c: temp_rise(series[c], "cpu") for c in COND_ORDER}
 
     # 电量图 y 范围
-    all_b = [b for c in COND_ORDER for _, b, _ in series[c] if b is not None]
+    all_b = [b for c in COND_ORDER for _, b, _, _ in series[c] if b is not None]
     bmin = min(all_b) - 2 if all_b else 80
     bmax = max(all_b) + 2 if all_b else 100
-    batt_svg = line_chart(series, "各工况电量% 随时间变化", "电量%", bmin, bmax, value_fmt="{:.0f}")
+    batt_svg = line_chart(series, "各工况电量% 随时间变化", "电量%", bmin, bmax, value_fmt="{:.0f}", field="batt")
 
-    # 温度图
-    has_temp = any(rises[c] is not None for c in COND_ORDER)
-    if has_temp:
-        all_t = [tp for c in COND_ORDER for _, _, tp in series[c] if tp is not None]
+    # 电池温度图（必填，主体）
+    has_b = any(rises_b[c] is not None for c in COND_ORDER)
+    if has_b:
+        all_t = [bt for c in COND_ORDER for _, _, bt, _ in series[c] if bt is not None]
         tmin = min(all_t) - 2 if all_t else 25
         tmax = max(all_t) + 2 if all_t else 45
-        temp_svg = line_chart(series, "各工况温度℃ 随时间变化", "温度℃", tmin, tmax, value_fmt="{:.0f}")
+        batt_temp_svg = line_chart(series, "各工况电池温度℃ 随时间变化", "电池温度℃", tmin, tmax, value_fmt="{:.0f}", field="btemp")
     else:
-        temp_svg = '<p class="note">未填写温度数据，已跳过温度图（可在 CSV 的 temp_c 列补测后重跑）。</p>'
+        batt_temp_svg = '<p class="note">未填写电池温度，已跳过（可在 battery_temp_c 列补测后重跑）。</p>'
+
+    # CPU 温度图（选填）
+    has_c = any(rises_c[c] is not None for c in COND_ORDER)
+    if has_c:
+        all_t = [ct for c in COND_ORDER for _, _, _, ct in series[c] if ct is not None]
+        tmin = min(all_t) - 2 if all_t else 25
+        tmax = max(all_t) + 2 if all_t else 45
+        cpu_temp_svg = line_chart(series, "各工况 CPU 温度℃ 随时间变化", "CPU温度℃", tmin, tmax, value_fmt="{:.0f}", field="ctemp")
+    else:
+        cpu_temp_svg = '<p class="note">未填写 CPU 温度（选填）。若 App 可读到，填 cpu_temp_c 列可叠加此图。</p>'
 
     rate_items = [(COND_ZH[c], rates[c]) for c in COND_ORDER if rates[c] is not None]
     rate_svg = bar_chart(rate_items, "各工况掉电速率（%/分钟，越高越耗电）", "%/min")
@@ -220,14 +244,19 @@ def main():
     # 关键结论
     valid_rates = [(c, rates[c]) for c in COND_ORDER if rates[c] is not None]
     hottest = max(valid_rates, key=lambda x: x[1])[0] if valid_rates else None
-    valid_rises = [(c, rises[c]) for c in COND_ORDER if rises[c] is not None]
-    max_rise = max(valid_rises, key=lambda x: x[1])[0] if valid_rises else None
+    valid_rises_b = [(c, rises_b[c]) for c in COND_ORDER if rises_b[c] is not None]
+    max_rise_b = max(valid_rises_b, key=lambda x: x[1])[0] if valid_rises_b else None
 
     findings = []
     if hottest:
         findings.append(f"耗电最快的工况是 <b>{COND_ZH[hottest]}</b>，平均掉电 <b>{rates[hottest]:.2f} %/分钟</b>。")
-    if max_rise:
-        findings.append(f"发热最明显的工况是 <b>{COND_ZH[max_rise]}</b>，30 分钟内温升 <b>{rises[max_rise]:.1f} ℃</b>。")
+    if max_rise_b:
+        findings.append(f"电池发热最明显的工况是 <b>{COND_ZH[max_rise_b]}</b>，30 分钟内温升 <b>{rises_b[max_rise_b]:.1f} ℃</b>。")
+    if has_c:
+        valid_rises_c = [(c, rises_c[c]) for c in COND_ORDER if rises_c[c] is not None]
+        max_rise_c = max(valid_rises_c, key=lambda x: x[1])[0] if valid_rises_c else None
+        if max_rise_c:
+            findings.append(f"CPU 温升最高的是 <b>{COND_ZH[max_rise_c]}</b>，30 分钟内温升 <b>{rises_c[max_rise_c]:.1f} ℃</b>，印证芯片是主要热源。")
     if not findings:
         findings.append("数据尚未完整，请补全 CSV 后重跑。")
 
@@ -256,18 +285,21 @@ def main():
   <h2>1. 电量随时间变化</h2>
   <div class="card">{batt_svg}</div>
 
-  <h2>2. 温度随时间变化</h2>
-  <div class="card">{temp_svg}</div>
+  <h2>2. 电池温度随时间变化（必填）</h2>
+  <div class="card">{batt_temp_svg}</div>
 
-  <h2>3. 各工况掉电速率对比</h2>
+  <h2>3. CPU 温度随时间变化（选填）</h2>
+  <div class="card">{cpu_temp_svg}</div>
+
+  <h2>4. 各工况掉电速率对比</h2>
   <div class="card">{rate_svg}</div>
 
-  <h2>4. 关键发现（自动生成，供撰写省电策略报告参考）</h2>
+  <h2>5. 关键发现（自动生成，供撰写省电策略报告参考）</h2>
   <div class="card"><ul>{findings_html}</ul>
     <p class="note">把以上结论并入 <code>power_saving_report.md</code> 的"数据概览/高功耗模块分析"段，并据此给出系统省电策略。</p>
   </div>
 
-  <h2>5. 原始数据表（24 组）</h2>
+  <h2>6. 原始数据表（24 组）</h2>
   {make_table(rows)}
 
   <p class="note">报告由 analyze_phone_power.py 生成 · 纯标准库内联 SVG，可离线打开。数据来源：{html.escape(os.path.basename(path))}（用户真实测量）。</p>
@@ -276,7 +308,8 @@ def main():
         f.write(doc)
     print("已生成", OUT)
     print("掉电速率 %/min：", {COND_ZH[c]: (round(rates[c], 3) if rates[c] else None) for c in COND_ORDER})
-    print("温升 ℃：", {COND_ZH[c]: (round(rises[c], 1) if rises[c] else None) for c in COND_ORDER})
+    print("电池温升 ℃：", {COND_ZH[c]: (round(rises_b[c], 1) if rises_b[c] else None) for c in COND_ORDER})
+    print("CPU温升 ℃：", {COND_ZH[c]: (round(rises_c[c], 1) if rises_c[c] else None) for c in COND_ORDER})
 
 
 if __name__ == "__main__":

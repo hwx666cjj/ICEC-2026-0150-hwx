@@ -15,7 +15,8 @@ Thumbs.db
 venv/
 .env
 
-# 说明：生成的 deliverable（report.html / summary.csv / time_comparison.csv / raw_data/）
+# 说明：生成的 deliverable（report.html / time_comparison.csv / rename_log.csv / raw_data/）
 # 属于本次考核提交物，默认纳入版本管理，不在此忽略。
-# 若日后想排除运行产物，可取消下一行注释：
-# output/
+
+# 运行时改名副本（由 rename.py 在 execute 时生成，可复现，非提交证据）
+work/

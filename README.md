@@ -5,36 +5,46 @@
 
 ## 选题说明
 - **第一阶段（基础素养实地测评，10选2，20分）**：已完成 **课题10 · 日常数字任务耗时审计与 AI 批处理实证**
+  - 子任务选定：**文件批量重命名**（大纲举例之一）。
   - 选择理由：10 个实地课题中唯一不依赖「校园实地测量 + 本人现场同框照片」的数字任务，最契合「用 AI 工具完成重复数字任务」的考核导向，且可由本人真实运行产出可核验数据。
 - （其余 9 个实地课题需到校实地采样与同框认证，留待线下补做。）
+
+## 课题10 数据真实性说明（重要）
+- **人工耗时（真值）**：用户将 10 个新建文件夹按顺序改名为数字，**手机秒表真实计时 45.0 秒**——非估算、非编造。
+- **AI 耗时（实测）**：脚本在副本上对 10 个真实文件夹执行 `os.rename`，用 `perf_counter` **实测 9.451 ms**，提速约 4761 倍。
+- **原始样本**：复现用户描述的真实场景——Windows 新建文件夹的默认命名（`新建文件夹`、`新建文件夹 (2)` … `新建文件夹 (10)`），
+  存放于 `raw_data/` 作为提交证据，**只读、不参与改名**。
+- 本实验遵循"不伪造数据"原则：两个时间均为真实测量，样本复现真实命名场景，Prompt 与过程均可溯源。
 
 ## 仓库结构（遵循大纲 Step 0 规范）
 ```
 ICEC-2026-学号后四位-姓名拼音/
-├── README.md                      # 本文件：选题与结构说明
+├── README.md                      # 本文件：选题、结构与真实性说明
 ├── 01-Field-Discovery/            # 第一阶段：基础素养实地测评
 │   └── Task10-DigitalAudit/       # 课题10 完整交付
-│       ├── raw_data/              # 10 份原始样本（note_01..10.txt）
-│       ├── make_samples.py        # 样本生成器（可复现）
-│       ├── extract.py             # AI 辅助批处理脚本（AI 脚本）
+│       ├── raw_data/              # 10 个原始样本文件夹（Windows 默认命名，证据保全）
+│       ├── rename.py              # AI 批处理脚本（dry-run 预览 + 实测耗时 + 校验）
 │       ├── AI_PROMPT.md           # 生成脚本所用提示词（Prompt）
-│       ├── summary.csv            # 自动提取的结构化汇总
+│       ├── rename_log.csv         # 改名前后对照日志
 │       ├── time_comparison.csv    # 人工 vs AI 耗时对比表
-│       ├── report.html            # 可视化审计报告
-│       ├── process_log.md         # 过程记录（迭代与排障）
-│       └── process_logs/          # 运行日志目录
+│       ├── report.html            # 可视化审计报告（内联 SVG）
+│       ├── make_report.py         # 报告生成脚本（可复现）
+│       └── process_log.md         # 过程记录（决策与排障）
 └── 03-AI-Collaboration/           # 关键 AI 提问/排障对话存档（见各任务 AI_PROMPT.md）
 ```
 
 ## 提交与运行指引
 ```bash
-# 1. 生成样本
-python3 01-Field-Discovery/Task10-DigitalAudit/make_samples.py
-# 2. 运行 AI 批处理脚本（自动产出 summary.csv / time_comparison.csv / report.html）
-python3 01-Field-Discovery/Task10-DigitalAudit/extract.py
-# 3. 提交过程留痕
-git add . && git commit -m "课题10：样本+AI脚本+耗时审计" && git push origin main
+cd 01-Field-Discovery/Task10-DigitalAudit
+# 1. 预览改名方案（不改文件，人工确认）
+python3 rename.py --mode dry-run
+# 2. 真正执行改名并实测耗时（产出 rename_log.csv / time_comparison.csv）
+python3 rename.py --mode execute
+# 3. 生成可视化报告 report.html
+python3 make_report.py
+# 4. 提交过程留痕
+git add . && git commit -m "课题10：文件批量重命名 耗时审计" && git push origin main
 ```
 
 ## 诚信声明
-本仓库全部数据、脚本与日志均为本人真实动手完成；AI 仅作为协同工具，原始数据与过程记录如实提交，无造假或代做。
+本仓库全部数据、脚本与日志均为本人真实动手完成；人工耗时为真实计时，AI 耗时为代码实测，原始样本如实复现真实场景，AI 仅作为协同工具，无造假或代做。

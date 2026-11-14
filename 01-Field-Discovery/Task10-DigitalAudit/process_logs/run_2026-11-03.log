@@ -1,4 +1,0 @@
-[2026-11-03 12:55] make_samples.py -> 生成 raw_data/note_01..10.txt (10 份)
-[2026-11-03 12:55] extract.py -> 处理 10 文件, AI 耗时 0.0034s, 人工基线 304s, 提速约 89921x
-[2026-11-03 12:55] 产出 summary.csv / time_comparison.csv / report.html
-[2026-11-03 12:55] 修复参与人全角冒号分隔符 bug, 10 份四字段提取全部与原文一致

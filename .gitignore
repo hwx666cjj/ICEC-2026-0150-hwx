@@ -23,5 +23,5 @@ work/
 
 # 课题02：生成的报告与示例数据（真实数据填好并生成 report.html 后，手动 git add 提交）
 01-Field-Discovery/Task02-PhonePower/report.html
-01-Field-Discovery/Task02-PhonePower/example_*
+01-Field-Discovery/Task02-PhonePower/example*
 

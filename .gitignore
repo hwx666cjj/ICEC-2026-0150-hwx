@@ -1,0 +1,21 @@
+# Python 缓存
+__pycache__/
+*.py[cod]
+*.pyo
+
+# 操作系统/编辑器
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# 本地环境
+.venv/
+venv/
+.env
+
+# 说明：生成的 deliverable（report.html / summary.csv / time_comparison.csv / raw_data/）
+# 属于本次考核提交物，默认纳入版本管理，不在此忽略。
+# 若日后想排除运行产物，可取消下一行注释：
+# output/

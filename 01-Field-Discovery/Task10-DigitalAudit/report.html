@@ -1,0 +1,67 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<title>课题10 · 数字任务耗时审计与 AI 批处理实证</title>
+<style>
+ body{font-family:-apple-system,'Segoe UI','Microsoft YaHei',sans-serif;max-width:960px;margin:0 auto;padding:24px;color:#222}
+ h1{border-bottom:3px solid #2c7fb8;padding-bottom:8px}
+ h2{color:#2c7fb8;margin-top:26px}
+ .card{background:#fafafa;border:1px solid #eee;border-radius:8px;padding:16px;margin:12px 0}
+ table{border-collapse:collapse;width:100%;font-size:13px} th,td{border:1px solid #ddd;padding:6px 8px}
+ .kpi{display:inline-block;background:#eef6fb;border:1px solid #cfe3f2;border-radius:8px;padding:12px 18px;margin:6px}
+ .kpi b{display:block;font-size:22px;color:#2c7fb8}
+ code{background:#f0f0f0;padding:2px 4px;border-radius:4px}
+</style></head><body>
+<h1>课题10 · 日常数字任务耗时审计与 AI 批处理实证</h1>
+<p>第一阶段·基础素养实地测评（10选2）｜ 零编程门槛 ｜ 可复现交付</p>
+
+<h2>1. 任务定义</h2>
+<div class="card">选定高频重复数字任务：<b>从 10 份格式不一的实验/会议记录文本中，提取「日期、地点、参与人、关键结论」
+四个字段并汇总为一张结构化表格</b>。分别用「纯人工」与「AI 辅助脚本」两种方法完成，审计耗时并制定人机校验规则。</div>
+
+<h2>2. 关键指标</h2>
+<div class="card">
+ <div class="kpi"><b>10</b>样本文件</div>
+ <div class="kpi"><b>805</b>总字符</div>
+ <div class="kpi"><b>304s</b>人工基线</div>
+ <div class="kpi"><b>0.003s</b>AI 脚本</div>
+ <div class="kpi"><b>89921×</b>提速倍数</div>
+</div>
+
+<h2>3. 耗时对比</h2>
+<div class="card"><div style="margin:6px 0"><span style="display:inline-block;width:90px">人工基线</span><span style="display:inline-block;height:18px;width:240px;background:#d95f0e;vertical-align:middle"></span> 303.6 s</div><div style="margin:6px 0"><span style="display:inline-block;width:90px">AI 脚本</span><span style="display:inline-block;height:18px;width:0px;background:#2c7fb8;vertical-align:middle"></span> 0.0 s</div>
+<p style="color:#666;font-size:12px">注：人工基线按「开文件+阅读+定位+手敲 4 字段」建模为 25s 起步 + 每字符 1/15 秒；
+AI 脚本耗时为脚本真实运行 wall-clock 时间（含读取与正则提取）。</p>
+</div>
+
+<h2>4. 逐文件耗时明细</h2>
+<div class="card"><table>
+<tr><th>文件</th><th>字符数</th><th>人工(s)</th><th>AI(s)</th><th>提速</th></tr>
+<tr><td>note_01.txt</td><td>84</td><td>30.6</td><td>0.0003</td><td>102000×</td></tr><tr><td>note_02.txt</td><td>85</td><td>30.7</td><td>0.0003</td><td>102333×</td></tr><tr><td>note_03.txt</td><td>79</td><td>30.3</td><td>0.0003</td><td>101000×</td></tr><tr><td>note_04.txt</td><td>89</td><td>30.9</td><td>0.0003</td><td>103000×</td></tr><tr><td>note_05.txt</td><td>74</td><td>29.9</td><td>0.0003</td><td>99667×</td></tr><tr><td>note_06.txt</td><td>83</td><td>30.5</td><td>0.0003</td><td>101667×</td></tr><tr><td>note_07.txt</td><td>63</td><td>29.2</td><td>0.0003</td><td>97333×</td></tr><tr><td>note_08.txt</td><td>99</td><td>31.6</td><td>0.0003</td><td>105333×</td></tr><tr><td>note_09.txt</td><td>75</td><td>30.0</td><td>0.0003</td><td>100000×</td></tr><tr><td>note_10.txt</td><td>74</td><td>29.9</td><td>0.0003</td><td>99667×</td></tr>
+<tr><td><b>合计</b></td><td><b>805</b></td><td><b>304</b></td><td><b>0.003</b></td><td><b>89921×</b></td></tr>
+</table></div>
+
+<h2>5. AI 自动提取结果（summary.csv）</h2>
+<div class="card"><table>
+<tr><th>文件</th><th>日期</th><th>地点</th><th>参与人</th><th>关键结论</th></tr>
+<tr><td>note_01.txt</td><td>2026-10-12</td><td>431 实训室</td><td>张三、李四、王五</td><td>原型板可以进入下一轮联调</td></tr><tr><td>note_02.txt</td><td>2026-10-13</td><td>429 机房</td><td>赵六、钱七</td><td>窗口取 5 比较合适，既能去毛刺又不太钝</td></tr><tr><td>note_03.txt</td><td>2026-10-14</td><td>图书馆三楼</td><td>孙八、周九</td><td>慢走和静止能用主频+幅值分开</td></tr><tr><td>note_04.txt</td><td>2026-10-15</td><td>426 实践工坊</td><td>吴十、郑十一</td><td>3D 打印外壳第二次打样尺寸偏差 0.4mm，需重新标定</td></tr><tr><td>note_05.txt</td><td>2026-10-16</td><td>431 实训室</td><td>张三、周九、冯十二</td><td>确定做环境监测终端，方向通过</td></tr><tr><td>note_06.txt</td><td>2026-10-17</td><td>429 机房</td><td>陈十三、李四</td><td>排线接触不良，已重新焊接</td></tr><tr><td>note_07.txt</td><td>2026-10-18</td><td>学术报告厅</td><td>王五、钱七、孙八</td><td>五分钟讲不清楚功耗优化，需砍到三个要点</td></tr><tr><td>note_08.txt</td><td>2026-10-19</td><td>431 实训室</td><td>赵六</td><td>续航理论可提升 500 倍以上，但要重排采集时序</td></tr><tr><td>note_09.txt</td><td>2026-10-20</td><td>426 工坊</td><td>周九、吴十、郑十一、冯十二</td><td>前两周 Git 提交太稀疏，后面改成每天一提交</td></tr><tr><td>note_10.txt</td><td>2026-10-21</td><td>429 机房</td><td>张三、陈十三</td><td>全部必交数据齐了，可以封仓准备面试</td></tr>
+</table></div>
+
+<h2>6. 人机校验规则（Human-in-the-loop）</h2>
+<div class="card"><ol>
+<li><b>字段完整性校验</b>：脚本提取后逐行检查 4 字段非空；空值标红交人工补录。</li>
+<li><b>日期归一化校验</b>：统一为 YYYY-MM-DD；未识别到年份的「X月X日」默认补 2026，需人工确认年份。</li>
+<li><b>人名白名单</b>：参与人 token 仅接受 2–4 个汉字；疑似误提（如结论里的名字）由人工剔除。</li>
+<li><b>抽样复核</b>：10 份中至少抽 2 份人工对照原文核对，一致率须 100% 才采信整批。</li>
+<li><b>结论截断检查</b>：结论字段不应包含换行/后续段落，超长即判定正则越界，人工修整。</li>
+</ol></div>
+
+<h2>7. 交付物（证据链）</h2>
+<div class="card"><ul>
+<li><code>raw_data/note_01..10.txt</code> — 10 份原始样本（任务样本）</li>
+<li><code>extract.py</code> — AI 辅助生成的批处理脚本（AI 脚本）</li>
+<li><code>AI_PROMPT.md</code> — 生成该脚本所用的提示词（Prompt）</li>
+<li><code>summary.csv</code> — 自动提取的结构化汇总</li>
+<li><code>time_comparison.csv</code> — 人工 vs AI 耗时对比表</li>
+<li><code>report.html</code> — 本可视化审计报告</li>
+<li><code>process_log.md</code> — 过程记录（迭代与排障）</li>
+</ul></div>
+</body></html>

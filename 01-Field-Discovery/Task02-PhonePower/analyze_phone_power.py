@@ -87,6 +87,16 @@ def temp_rise(points, field="battery"):
     return temps[-1][1] - temps[0][1]
 
 
+def temp_peak(points, field="battery"):
+    """峰值温度（最高值）。field='battery'/'cpu'。"""
+    vals = []
+    for t, b, bt, ct in points:
+        v = bt if field == "battery" else ct
+        if v is not None:
+            vals.append(v)
+    return max(vals) if vals else None
+
+
 def line_chart(series, title, ylabel, ymin, ymax, w=680, h=340, value_fmt="{:.0f}", field="batt"):
     padL, padR, padT, padB = 52, 18, 28, 36
     plotW = w - padL - padR
@@ -211,6 +221,8 @@ def main():
     rates = {c: drain_rate(series[c]) for c in COND_ORDER}
     rises_b = {c: temp_rise(series[c], "battery") for c in COND_ORDER}
     rises_c = {c: temp_rise(series[c], "cpu") for c in COND_ORDER}
+    peaks_b = {c: temp_peak(series[c], "battery") for c in COND_ORDER}
+    peaks_c = {c: temp_peak(series[c], "cpu") for c in COND_ORDER}
 
     # 电量图 y 范围
     all_b = [b for c in COND_ORDER for _, b, _, _ in series[c] if b is not None]
@@ -241,22 +253,25 @@ def main():
     rate_items = [(COND_ZH[c], rates[c]) for c in COND_ORDER if rates[c] is not None]
     rate_svg = bar_chart(rate_items, "各工况掉电速率（%/分钟，越高越耗电）", "%/min")
 
-    # 关键结论
+    # 关键结论（同时用「峰值温度」与「温升」，避免首末差对高负载工况失真）
     valid_rates = [(c, rates[c]) for c in COND_ORDER if rates[c] is not None]
     hottest = max(valid_rates, key=lambda x: x[1])[0] if valid_rates else None
-    valid_rises_b = [(c, rises_b[c]) for c in COND_ORDER if rises_b[c] is not None]
-    max_rise_b = max(valid_rises_b, key=lambda x: x[1])[0] if valid_rises_b else None
+    valid_peaks_b = [(c, peaks_b[c]) for c in COND_ORDER if peaks_b[c] is not None]
+    hottest_b = max(valid_peaks_b, key=lambda x: x[1])[0] if valid_peaks_b else None
+    valid_peaks_c = [(c, peaks_c[c]) for c in COND_ORDER if peaks_c[c] is not None]
+    hottest_c = max(valid_peaks_c, key=lambda x: x[1])[0] if valid_peaks_c else None
 
     findings = []
     if hottest:
         findings.append(f"耗电最快的工况是 <b>{COND_ZH[hottest]}</b>，平均掉电 <b>{rates[hottest]:.2f} %/分钟</b>。")
-    if max_rise_b:
-        findings.append(f"电池发热最明显的工况是 <b>{COND_ZH[max_rise_b]}</b>，30 分钟内温升 <b>{rises_b[max_rise_b]:.1f} ℃</b>。")
-    if has_c:
-        valid_rises_c = [(c, rises_c[c]) for c in COND_ORDER if rises_c[c] is not None]
-        max_rise_c = max(valid_rises_c, key=lambda x: x[1])[0] if valid_rises_c else None
-        if max_rise_c:
-            findings.append(f"CPU 温升最高的是 <b>{COND_ZH[max_rise_c]}</b>，30 分钟内温升 <b>{rises_c[max_rise_c]:.1f} ℃</b>，印证芯片是主要热源。")
+    if hottest_b:
+        rb = rises_b[hottest_b]
+        rb_txt = f"电池温升 {rb:.1f} ℃" if rb is not None else "电池温升数据不足"
+        findings.append(f"电池温度峰值最高的是 <b>{COND_ZH[hottest_b]}</b>，达到 <b>{peaks_b[hottest_b]:.1f} ℃</b>（{rb_txt}）。")
+    if hottest_c:
+        rc = rises_c[hottest_c]
+        rc_txt = f"首末温升 {rc:.1f} ℃" if rc is not None else "首末温升数据不足"
+        findings.append(f"CPU 温度峰值最高的是 <b>{COND_ZH[hottest_c]}</b>，达到 <b>{peaks_c[hottest_c]:.1f} ℃</b>（{rc_txt}），印证高负载时芯片是主要热源。")
     if not findings:
         findings.append("数据尚未完整，请补全 CSV 后重跑。")
 
@@ -307,9 +322,9 @@ def main():
     with open(OUT, "w", encoding="utf-8") as f:
         f.write(doc)
     print("已生成", OUT)
-    print("掉电速率 %/min：", {COND_ZH[c]: (round(rates[c], 3) if rates[c] else None) for c in COND_ORDER})
-    print("电池温升 ℃：", {COND_ZH[c]: (round(rises_b[c], 1) if rises_b[c] else None) for c in COND_ORDER})
-    print("CPU温升 ℃：", {COND_ZH[c]: (round(rises_c[c], 1) if rises_c[c] else None) for c in COND_ORDER})
+    print("掉电速率 %/min：", {COND_ZH[c]: (round(rates[c], 3) if rates[c] is not None else None) for c in COND_ORDER})
+    print("电池 峰值/温升 ℃：", {COND_ZH[c]: (f"{peaks_b[c]:.1f}/{rises_b[c]:.1f}" if peaks_b[c] is not None else None) for c in COND_ORDER})
+    print("CPU  峰值/温升 ℃：", {COND_ZH[c]: (f"{peaks_c[c]:.1f}/{rises_c[c]:.1f}" if peaks_c[c] is not None else None) for c in COND_ORDER})
 
 
 if __name__ == "__main__":

@@ -21,7 +21,6 @@ venv/
 # 运行时改名副本（由 rename.py 在 execute 时生成，可复现，非提交证据）
 work/
 
-# 课题02：生成的报告与示例数据（真实数据填好并生成 report.html 后，手动 git add 提交）
-01-Field-Discovery/Task02-PhonePower/report.html
+# 课题02：示例验证数据/报告（仅脚本验证用，非真实数据，不提交）
 example*
 

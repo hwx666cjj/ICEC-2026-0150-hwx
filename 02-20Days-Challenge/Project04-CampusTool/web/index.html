@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>群通知速整 · 校园通知提取器</title>
+<style>
+  :root{--bg:#f5f6f8;--card:#fff;--ink:#1f2329;--sub:#646a73;--line:#e5e6eb;--brand:#3370ff;--brand-soft:#eaf1ff;--warn:#ff7d00;--ok:#00a870;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6;}
+  .wrap{max-width:820px;margin:0 auto;padding:32px 20px 60px;}
+  header{text-align:center;margin-bottom:24px;}
+  h1{font-size:24px;margin:0 0 6px;font-weight:600;}
+  .lead{color:var(--sub);font-size:14px;margin:0;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px;}
+  .card h2{font-size:15px;margin:0 0 12px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  .step{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--brand-soft);color:var(--brand);align-items:center;justify-content:center;font-size:12px;font-weight:600;}
+  textarea{width:100%;min-height:160px;border:1px solid var(--line);border-radius:8px;padding:12px;font-size:14px;font-family:inherit;resize:vertical;outline:none;}
+  textarea:focus{border-color:var(--brand);}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px;}
+  button{border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer;font-family:inherit;}
+  .primary{background:var(--brand);color:#fff;}
+  .primary:hover{background:#245bdb;}
+  .ghost{background:var(--bg);color:var(--sub);border:1px solid var(--line);}
+  .hint{font-size:12px;color:var(--sub);margin-top:8px;}
+  .privacy{background:#fff8ee;border:1px solid #ffe0b2;color:#8a5a00;border-radius:8px;padding:10px 12px;font-size:13px;margin-top:12px;}
+  .stat{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;}
+  .stat div{background:var(--bg);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--sub);}
+  .stat b{color:var(--ink);font-size:18px;font-weight:600;margin-left:6px;}
+  .item{border-bottom:1px solid var(--line);padding:12px 0;}
+  .item:last-child{border-bottom:none;}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
+  .tag{font-size:12px;padding:2px 8px;border-radius:20px;background:var(--brand-soft);color:var(--brand);}
+  .raw{font-size:14px;word-break:break-all;}
+  .meta{font-size:13px;color:var(--sub);margin-top:4px;}
+  .meta em{font-style:normal;color:var(--ok);}
+  .empty{text-align:center;color:var(--sub);padding:24px;font-size:14px;}
+  .exp{font-size:12px;color:var(--sub);border-left:3px solid var(--line);padding-left:10px;margin-top:20px;}
+  code{background:var(--bg);padding:1px 5px;border-radius:4px;font-size:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>群通知速整</h1>
+    <p class="lead">粘贴班级群通知，自动揪出截止日期、时间、地点和待办</p>
+  </header>
+
+  <div class="card">
+    <h2><span class="step">1</span>粘贴通知</h2>
+    <textarea id="input" placeholder="把群里的通知原文粘进来，一行一条。例如：&#10;&#10;《形势与政策》11月20日前提交到学习通&#10;职业规划大赛作品截止11月15日21:00，初赛11月18日12:00前交&#10;班会11月20日15:00在教三301召开"></textarea>
+    <div class="row">
+      <button class="primary" id="run">立即提取</button>
+      <button class="ghost" id="demo">填入示例</button>
+      <button class="ghost" id="clear">清空</button>
+    </div>
+    <div class="privacy">🔒 隐私说明：所有内容只在你的浏览器里处理，不会上传、不存服务器，关掉页面就没了。</div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none;">
+    <h2><span class="step">2</span>提取结果</h2>
+    <div class="stat">
+      <div>命中条目<b id="sItems">0</b></div>
+      <div>日期<b id="sDates">0</b></div>
+      <div>时间<b id="sTimes">0</b></div>
+      <div>耗时<b id="sMs">0ms</b></div>
+    </div>
+    <div id="list"></div>
+    <div class="row"><button class="ghost" id="copy">复制摘要</button></div>
+  </div>
+
+  <div class="exp">
+    这是 ICEC 选拔项目「校园通知提取与每日聚合器」的在线体验版，规则与本地 Python 工具一致。<br>
+    本地版支持每日定时自动运行 + 遥测日志：<code>02-20Days-Challenge/Project04-CampusTool</code>
+  </div>
+</div>
+
+<script>
+const KW = {
+  "截止/提交":["截止","ddl","due","提交","上交","交作业","过期","之前","前请"],
+  "事件":["会议","班会","讲座","考试","测验","答辩","路演","实训","集合","活动","报名"],
+  "作业":["作业","习题","实验报告","论文","预习","复习","项目","大作业"],
+  "地点":["教室","机房","工坊","报告厅","图书馆","体育馆","楼","馆","地点","门口"]
+};
+const DATE_RE = /(?<![-A-Za-z0-9])(\d{1,2})\s*(?:月\s*(\d{1,2})\s*[日号]?|[/]\s*(\d{1,2}))/g;
+const TIME_RE = /(?<![-A-Za-z0-9])(\d{1,2})\s*[:：]\s*(\d{2})/g;
+
+function extractDates(line){
+  const out=[]; let m;
+  DATE_RE.lastIndex=0;
+  while((m=DATE_RE.exec(line))!==null){
+    const mo=parseInt(m[1],10), d=m[2]!==undefined?m[2]:m[3];
+    if(d!==undefined) out.push(mo+"月"+parseInt(d,10)+"日");
+  }
+  return out;
+}
+function extractTimes(line){
+  const out=[]; let m;
+  TIME_RE.lastIndex=0;
+  while((m=TIME_RE.exec(line))!==null){
+    out.push(parseInt(m[1],10)+":"+m[2]);
+  }
+  return out;
+}
+function makeItem(line){
+  const item={raw:line.slice(0,140),dates:extractDates(line),times:extractTimes(line),tags:[]};
+  for(const tag in KW){ if(KW[tag].some(k=>line.includes(k))) item.tags.push(tag); }
+  return item;
+}
+function extract(text){
+  const items=[];
+  const blocks=text.split(/\n\s*\n/);
+  for(const blk of blocks){
+    const lines=blk.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    for(const line of lines){
+      const it=makeItem(line);
+      if(it.dates.length||it.times.length||it.tags.length) items.push(it);
+    }
+  }
+  return items;
+}
+function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+function render(items,ms){
+  const card=document.getElementById("resultCard");
+  card.style.display="block";
+  const allDates=items.reduce((n,i)=>n+i.dates.length,0);
+  const allTimes=items.reduce((n,i)=>n+i.times.length,0);
+  document.getElementById("sItems").textContent=items.length;
+  document.getElementById("sDates").textContent=allDates;
+  document.getElementById("sTimes").textContent=allTimes;
+  document.getElementById("sMs").textContent=ms+"ms";
+  const list=document.getElementById("list");
+  if(!items.length){list.innerHTML='<div class="empty">没找到含日期 / 时间 / 关键词的通知，换个格式试试</div>';return;}
+  list.innerHTML=items.map(it=>{
+    const tags=it.tags.length?it.tags.map(t=>'<span class="tag">'+escapeHtml(t)+'</span>').join(""):'<span class="tag">其他</span>';
+    let meta="";
+    if(it.dates.length) meta+='日期 <em>'+it.dates.map(escapeHtml).join(" / ")+"</em>　";
+    if(it.times.length) meta+='时间 <em>'+it.times.map(escapeHtml).join(" / ")+"</em>";
+    return '<div class="item"><div class="tags">'+tags+'</div><div class="raw">'+escapeHtml(it.raw)+'</div>'+(meta?'<div class="meta">'+meta+'</div>':"")+'</div>';
+  }).join("");
+}
+function digestText(items){
+  const lines=["# 校园通知提取摘要","","> 共 "+items.length+" 条",""];
+  items.forEach(it=>{
+    let l="- 【"+(it.tags.join(",")||"其他")+"】 "+it.raw;
+    const extra=[];
+    if(it.dates.length)extra.push("日期 "+it.dates.join(" / "));
+    if(it.times.length)extra.push("时间 "+it.times.join(" / "));
+    if(extra.length)l+="（"+extra.join("；")+"）";
+    lines.push(l);
+  });
+  return lines.join("\n");
+}
+let lastItems=[];
+document.getElementById("run").onclick=()=>{
+  const t0=performance.now();
+  lastItems=extract(document.getElementById("input").value);
+  render(lastItems,Math.round((performance.now()-t0)*100)/100);
+};
+document.getElementById("demo").onclick=()=>{
+  document.getElementById("input").value="《形势与政策》11月20日前提交到学习通\n职业规划大赛作品截止11月15日21:00，初赛11月18日12:00前交\n班会11月20日15:00在教三301召开\nc3-2班明天下午三点机房集合做实训";
+};
+document.getElementById("clear").onclick=()=>{
+  document.getElementById("input").value="";
+  document.getElementById("resultCard").style.display="none";
+};
+document.getElementById("copy").onclick=async()=>{
+  const txt=digestText(lastItems);
+  try{await navigator.clipboard.writeText(txt);}catch(e){
+    const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();
+  }
+  const btn=document.getElementById("copy");btn.textContent="已复制 ✓";setTimeout(()=>btn.textContent="复制摘要",1500);
+};
+</script>
+</body>
+</html>

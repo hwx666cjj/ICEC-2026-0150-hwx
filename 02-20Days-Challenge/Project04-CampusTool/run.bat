@@ -11,6 +11,12 @@ rem 1) try py launcher
 where py >nul 2>&1
 if %errorlevel%==0 set "PY=py"
 
+rem 1.5) try python command (Windows App Execution Alias / on PATH)
+if not defined PY (
+  where python >nul 2>&1
+  if %errorlevel%==0 set "PY=python"
+)
+
 rem 2) try common user-install locations (no PATH needed)
 if not defined PY (
   for %%i in (39 310 311 312 313 314) do (
